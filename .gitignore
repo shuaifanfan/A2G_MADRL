@@ -1,4 +1,5 @@
 /.vscode
+**/__pycache__
 /runs
 /wandb
 /source_code/LaunchMCS/util/Rome/pair_dis_dict_0.json

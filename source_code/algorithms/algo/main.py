@@ -103,8 +103,6 @@ class OnPolicyRunner:
 
         self.random_map = input_args.random_map
 
-        self.poi_runtime = []
-        self.mv_runtime = []
 
         setSeed(run_args.seed)
 

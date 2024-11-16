@@ -1963,7 +1963,7 @@ class EnvUCS(object):
                     self.init_poi_adj_dict[type]['poi'][agent_id,:] = normal_dis
         
         self.reset_poi_adj_dict()   
-        return self.decided_collect_time
+
     
     def reset_poi_adj_dict(self):
         self.poi_adj_dict = self.init_poi_adj_dict
