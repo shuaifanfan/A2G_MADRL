@@ -103,7 +103,8 @@ class OnPolicyRunner:
 
         self.random_map = input_args.random_map
 
-
+        self.tf_commutation_size = []
+        self.poi_cummutation_size = []
         setSeed(run_args.seed)
 
     def run(self):  # 被launcher.py调用的主循环
@@ -300,15 +301,8 @@ class OnPolicyRunner:
           
             if self.input_args.algo == 'CPPO':
 
-                mv_run_begin = datetime.now()
-
                 a, logp, cols, memory = self.agent.act(s, task_embs, random_seq=True, memory=memory)
-               
-                mv_run_end = datetime.now()
-                mv_runtime = (mv_run_end - mv_run_begin).total_seconds()
-                self.mv_runtime.append(mv_runtime)
-                self.logger.log(mv_runtime=sum(self.mv_runtime)/len(self.mv_runtime))
-                self.mv_runtime = []
+            
             else:
         
                 dist = self.agent.act(s, task_embs)
@@ -339,27 +333,31 @@ class OnPolicyRunner:
                # print('poi_s:',poi_s)  poi观测信息
                 #for key in poi_s.keys():
                 #    print(key,poi_s[key].shape)
+                temp_poi_size = []
+                collect_data_amount_list = []
                 while not poi_done[0]:
-
-                    poi_run_begin = datetime.now()
-
+                 
                     poi_dist = self.episodic_agent.act(poi_s)
-
-                    poi_run_end = datetime.now()
-                    poi_runtime = (poi_run_end - poi_run_begin).total_seconds()
-                    self.poi_runtime.append(poi_runtime)
 
                     poi_action = poi_dist.sample()
                     poi_log_prob =  poi_dist.log_prob(poi_action)
                     poi_action = poi_action.detach().cpu().numpy()
                     poi_s1, poi_r, poi_done, poi_info = envs.poi_step(poi_action)
+                    collect_data_amount = sum(poi_r)/len(poi_r)*(40*10)
                     episodicBuffer.store(poi_s,poi_action,poi_r,poi_s1,poi_done,poi_log_prob)
                     poi_s =  dp(poi_s1)
-
-                self.logger.log(poi_runtime=sum(self.poi_runtime)/len(self.poi_runtime))
-                self.poi_runtime = []
+                    import sys
+                    temp_poi_size.append(sys.getsizeof(poi_s)/16*8 / 1e6) 
+                    collect_data_amount_list.append(collect_data_amount)
+                
+                self.logger.log(mean_poi_state_size_Mbits = sum(temp_poi_size)/len(temp_poi_size))
+                self.logger.log(mean_collect_data_amount_per_agent = sum(collect_data_amount_list)/len(collect_data_amount_list))
                 s1, r, done, env_info = envs.poi_continue_step()  
-     
+                #r是一个dict，key是agent_type，value是一个np.array，shape是(n_thread,n_agent)，每一行是一个线程的所有agent的reward
+                import sys
+                bit_size = sys.getsizeof(s1)/16
+                self.logger.log(mean_transfomer_size_Mbits = bit_size*8 / 1e6)
+            
                 
           
             if self.use_lambda:

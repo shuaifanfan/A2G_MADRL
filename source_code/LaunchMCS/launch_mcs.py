@@ -486,7 +486,7 @@ class EnvUCS(object):
                     my_position = (new_x / self.SCALE, new_y / self.SCALE)
                     dis = self.last_length[uav_index][a]
                     energy_consuming = self._cal_energy_consuming(dis, type)
-                    energy_consumption_all += energy_consuming
+                    #energy_consumption_all += energy_consuming
 
                     if uav_index == self.NUM_UAV[type] - 1:
                         self.carrier_node_history.append(copy.deepcopy(self.carrier_node))
@@ -512,7 +512,7 @@ class EnvUCS(object):
                 self.agent_position[type][uav_index] = my_position
                 self._use_energy(type, uav_index, energy_consuming)
                 energy_consumption_all += energy_consuming
-                uav_reward[type][uav_index] -= energy_consuming * 1e-6
+                #uav_reward[type][uav_index] -= energy_consuming * 1e-6
                 distance[type][uav_index] += dis
             
         if self.NOMA_MODE:#true
@@ -616,7 +616,7 @@ class EnvUCS(object):
                         else:
                             aux = 0
 
-                        uav_reward[type][uav_index] = aoi_reward - energy_consumption_all * self.energy_penalty + aux
+                        uav_reward[type][uav_index] += aoi_reward - energy_consumption_all * self.energy_penalty + aux
                         #uav_reward[type][uav_index] = aoi_reward + aux
                         if self.dis_bonus:
                             if type == 'carrier':
@@ -2214,6 +2214,8 @@ class EnvUCS(object):
                 else:
                     r, collected_data = self._collect_data_from_poi(type, uav_index, collect_time)
 
+                energy_consumption_all += self._cal_energy_consuming(self.distance[type][uav_index], type)
+
                 self.uav_data_collect[type][uav_index].append(collected_data)
 
                 uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
@@ -2262,8 +2264,9 @@ class EnvUCS(object):
                             aux = 0
 
                         #uav_reward[type][uav_index] = aoi_reward - energy_consumption_all * 1e-6 + aux
+                       
                         
-                        uav_reward[type][uav_index] = aoi_reward - energy_consumption_all * self.energy_penalty + aux
+                        uav_reward[type][uav_index] += aoi_reward - energy_consumption_all * self.energy_penalty + aux
                         if self.dis_bonus:
                             if type == 'carrier':
                                 dis = 0

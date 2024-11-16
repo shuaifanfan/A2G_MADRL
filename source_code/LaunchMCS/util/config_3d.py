@@ -38,7 +38,7 @@ class Config(object):
             "map": 0,
             "description": "default",
             # Env
-            "centralized": False,
+            "centralized": True,
             "task_id": 0,
             "action_mode": 0,  # 1 for continuous,  0 for discrete, 
             "collect_mode": 2,  # 0 for collection, 1 for aoi 2 for continuous aoi
