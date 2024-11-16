@@ -1,0 +1,32 @@
+program: main_DPPO.py
+project: MCS
+name: CPPO_hyper_0725
+command:
+  - /home/liuchi/anaconda3/envs/wh/bin/python
+  - ${program}
+  - ${args_no_boolean_flags}
+method: grid  
+metric:
+  name: train_metric/a_sensing_efficiency
+  goal: maximize
+parameters:
+  group:
+    value: "CPPO_hyper_0725"
+  algo:
+    value: "CPPO"
+
+  lr:
+    values: [0.0001,0.00005,0.0002]
+
+  lr_scheduler:
+    values: ['cos','linear','']
+
+  n_update_pi:
+    values: [10,30]
+  
+  use_hgcn:
+    values: [True,False]
+
+
+
+

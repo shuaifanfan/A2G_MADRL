@@ -1,0 +1,26 @@
+# @package _group_
+task_emb_dim: 20
+encoder:
+    type: 'vae' # 'vae' or 'deterministic'
+    hiddens:
+        - 256
+        - 128
+    activation: 'relu' # options: 'relu' or 'tanh'
+decoder:
+    type: 'deterministic' # 'probabilistic' or 'deterministic'
+    hiddens:
+        - 256
+        - 128
+    activation: 'relu' # options: 'relu' or 'tanh'
+
+lr: 1e-5
+device: 'cuda:0'
+max_grad_norm: 0.5
+
+# whether task embedding should be detached for RL update
+# if false then RL loss backprops into the encoder
+detach: True
+
+obs_loss_coef: 1.0
+rew_loss_coef: 1.0
+kl_loss_coef: 0.1

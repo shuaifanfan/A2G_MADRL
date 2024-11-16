@@ -1,0 +1,14 @@
+wandb_version: 1
+
+algo:
+  value: CPPO
+group:
+  value: CPPO_hyper_0725
+lr:
+  value: 0.0001
+lr_scheduler:
+  value: cos
+n_update_pi:
+  value: 30
+use_hgcn:
+  value: false

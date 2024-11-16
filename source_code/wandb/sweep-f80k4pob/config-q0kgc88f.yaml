@@ -1,0 +1,22 @@
+wandb_version: 1
+
+algo:
+  value: CPPO
+clip_param:
+  value: 0.2
+group:
+  value: CPPO_hyper
+lr:
+  value: 0.0005
+n_embd:
+  value: 32
+task_emb_dim:
+  value: 20
+use_clipped_value_loss:
+  value: true
+use_huber_loss:
+  value: false
+use_max_grad_norm:
+  value: false
+use_valuenorm:
+  value: false

@@ -1,0 +1,8 @@
+wandb_version: 1
+
+algo:
+  value: CPPO
+group:
+  value: CPPO_hyper
+use_mates:
+  value: false
