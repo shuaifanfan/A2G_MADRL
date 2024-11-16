@@ -48,7 +48,7 @@ class Config(object):
             "debug_mode": False,
             "action_root": 15,
             "max_episode_step": 120,
-            "dataset": "KAIST",
+            "dataset": "Rome",
             "test_mode": False,
             "scale": 50,
             "time_slot": 20,

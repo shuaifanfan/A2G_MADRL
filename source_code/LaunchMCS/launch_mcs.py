@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append('/home/liuchi/zf/MCS_TEST/')
+sys.path.append('/home/liuchi/zf/MCS_with_git/MCS_TEST')
 import copy
 import pickle
 import warnings
@@ -97,8 +97,8 @@ class EnvUCS(object):
         elif self.config('dataset') == 'Rome':
             #self.broke_threshold = 500
             #self.normal_threshold = 200
-            self.broke_threshold = 500
-            self.normal_threshold = 600
+            self.broke_threshold = 100
+            self.normal_threshold = 50
         self.MAP_X = self.config("map_x")
         self.MAP_Y = self.config("map_y")
         self.POI_NUM = self.config("poi_num")
@@ -129,13 +129,18 @@ class EnvUCS(object):
                     # buffer = getattr(self, item + '_mem').buf
                     # setattr(self, item, json.loads(bytes(buffer[:]).decode('utf-8')))
             else:
-                with open(f"/home/liuchi/zf/MCS_TEST/source_code/LaunchMCS/util/"
+                with open(f"/home/liuchi/zf/MCS_with_git/MCS_TEST/source_code/LaunchMCS/util/"
                           f"{self.config('dataset')}/road_map.json", 'r') as f:
                     self.ROAD_MAP = json.load(f)
-                    self.ROAD_MAP = {key: set(value) for key, value in self.ROAD_MAP.items()}
+                    self.ROAD_MAP = {key: set(value) for key, value in self.ROAD_MAP.items()}  # 要remove的edge
 
- 
-                pair = -1
+                if self.config('dataset') == 'KAIST':
+                    pair = -1
+                elif self.config('dataset') == 'Rome':
+                    pair = 3
+                else:
+                    raise NotImplementedError
+                
                 if pair == 0:
                     dis_path = '/home/liuchi/zf/MCS_TEST/source_code/LaunchMCS/util/Rome/(12.4523,41.865)_(12.5264,41.919)_drive_service_Dict_node_857.json'
                     self.normal_threshold = 400
@@ -149,11 +154,11 @@ class EnvUCS(object):
                     self.normal_threshold = 600
                     self.UAV_SPEED['carrier'] = 40
                 elif pair == 3: #zf新加的roma地图
-                    dis_path = '/home/liuchi/zf/MCS_TEST/source_code/LaunchMCS/util/Rome/(12.4994,41.8822)_(12.5264,41.9018)_drive_service_ZF_Dict_100.json'
-                    self.normal_threshold = 500
-                    self.UAV_SPEED['carrier'] = 40
+                    dis_path = '/home/liuchi/zf/MCS_with_git/MCS_TEST/source_code/LaunchMCS/util/Rome/(12.4994,41.8822)_(12.5264,41.9018)_drive_service_ZF_Dict_100.json'
+                    self.normal_threshold = 50
+                    self.UAV_SPEED['carrier'] = 20
                 else:
-                    dis_path = f"/home/liuchi/zf/MCS_TEST/source_code/LaunchMCS/util/{self.config('dataset')}/pair_dis_dict_0.json"
+                    dis_path = f"/home/liuchi/zf/MCS_with_git/MCS_TEST/source_code/LaunchMCS/util/{self.config('dataset')}/pair_dis_dict_0.json"
                     
                     
                 with open(dis_path, 'r') as f:
@@ -171,12 +176,15 @@ class EnvUCS(object):
                                     self.valid_edges[key].add((i, j))
                                 elif key != '0' and dis <= self.broke_threshold:
                                     self.valid_edges[key].add((i, j))
-
-                # self.ALL_G = ox.load_graphml(
-                #    "/home/liuchi/zf/AirDropMCS/source_code/LaunchMCS/util/Rome/(12.4994,41.8822)_(12.5264,41.9018)_map.graphml").to_undirected()
-
-                self.ALL_G = ox.load_graphml(
-                    f"/home/liuchi/zf/MCS_TEST/source_code/LaunchMCS/util/{self.config('dataset')}/map_0.graphml").to_undirected()
+                if self.config('dataset') == 'KAIST':
+                    self.ALL_G = ox.load_graphml(
+                        f"/home/liuchi/zf/MCS_with_git/MCS_TEST/source_code/LaunchMCS/util/{self.config('dataset')}/map_0.graphml").to_undirected()
+                elif self.config('dataset') == 'Rome':
+                    self.ALL_G = ox.load_graphml(
+                   "/home/liuchi/zf/MCS_with_git/MCS_TEST/source_code/LaunchMCS/util/Rome/(12.4994,41.8822)_(12.5264,41.9018)_map.graphml").to_undirected()
+                else:
+                    raise NotImplementedError
+                    
                 
                 self.node_map = {}
                 for i, node in enumerate(self.ALL_G.nodes):
