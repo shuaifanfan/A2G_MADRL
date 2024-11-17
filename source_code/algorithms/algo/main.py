@@ -118,6 +118,10 @@ class OnPolicyRunner:
         从细粒度角度看，是offpolicy的，每次用rollout产生的trajectory更新policy网络，是offpolicy的，因为更新时用的数据是之前产生的，不是当前rollout的
 
         分层RL，上层的move，下层collect。上层move在根据s进行act之后获得reward和next_s,是要经过下层collect之后才能获得的，要等下层的小MDP结束之后才能获得
+       
+        一次完整的episode（所有环境同时done），和，一次完整的rollout是不一样的
+        一次rollout有480/16=30个step，而env需要step到最大次数（120）次才会返回done，因此在rollout中，需要四个rollout才能完成一个episode
+        为什么efficiency在wandb的logger的step中有6M个step，没想明白
         """
         if self.run_args.test:
             self.test(1)
@@ -325,8 +329,9 @@ class OnPolicyRunner:
             #         a[type] = a_tmp
             #         logp[type] = logp_tmp
             
-            
-            s1, r, done, env_info = envs.step(a)      
+            #print(f"step {t} time in rollout_env")
+            s1, r, done, env_info = envs.step(a)    
+            #print(f"step {t} end in rollout_env")  
             if self.two_stage_mode:
                 poi_done = [False for _ in range(self.input_args.n_thread)]
                 poi_s = envs.poi_get_obs_from_outside()
@@ -384,7 +389,8 @@ class OnPolicyRunner:
 
             s = dp(s1)
             if done:
-                print("--------------------------------------------------------------------------done")
+                # print("--------------------------------------------------------------------------done")
+                # print("step--------------------------------------------------------------------",t)
                 ep_r = self.episode_reward
                 #print('train episode reward:', ep_r)
 

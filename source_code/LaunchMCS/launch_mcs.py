@@ -520,6 +520,7 @@ class EnvUCS(object):
                 self.agent_position[type][uav_index] = my_position
                 self._use_energy(type, uav_index, energy_consuming)
                 energy_consumption_all += energy_consuming
+                uav_reward[type][uav_index] -= energy_consuming * self.energy_penalty
                 #uav_reward[type][uav_index] -= energy_consuming * 1e-6
                 distance[type][uav_index] += dis
           
@@ -623,7 +624,7 @@ class EnvUCS(object):
                         else:
                             aux = 0
 
-                        uav_reward[type][uav_index] += aoi_reward - energy_consumption_all * self.energy_penalty + aux
+                        uav_reward[type][uav_index] += aoi_reward  + aux
                         #uav_reward[type][uav_index] = aoi_reward + aux
                         if self.dis_bonus:
                             if type == 'carrier':
@@ -633,7 +634,8 @@ class EnvUCS(object):
                                                               self.agent_position[type][other_uav], type=type)
                                 dis /= (self.NUM_UAV[type] - 1)
                                 uav_reward[type][uav_index] += 5e-5 * min(dis, 500)
-
+        # print("step_count:",self.step_count)
+        # print("if_done?",self._is_episode_done())
         done = self._is_episode_done()
         self.step_count += 1
 
@@ -2227,8 +2229,9 @@ class EnvUCS(object):
                 else:
                     r, collected_data = self._collect_data_from_poi(type, uav_index, collect_time)
 
-                energy_consumption_all += self._cal_energy_consuming(self.distance[type][uav_index], type)
-
+                energy_consuming = self._cal_energy_consuming(self.distance[type][uav_index], type)
+                energy_consumption_all += energy_consuming
+                uav_reward[type][uav_index] -= energy_consuming * self.energy_penalty
                 self.uav_data_collect[type][uav_index].append(collected_data)
 
                 uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
@@ -2279,7 +2282,7 @@ class EnvUCS(object):
                         #uav_reward[type][uav_index] = aoi_reward - energy_consumption_all * 1e-6 + aux
                        
                         
-                        uav_reward[type][uav_index] += aoi_reward - energy_consumption_all * self.energy_penalty + aux
+                        uav_reward[type][uav_index] += aoi_reward  + aux
                         if self.dis_bonus:
                             if type == 'carrier':
                                 dis = 0
