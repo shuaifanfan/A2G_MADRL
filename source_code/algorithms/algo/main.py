@@ -384,6 +384,7 @@ class OnPolicyRunner:
 
             s = dp(s1)
             if done:
+                print("--------------------------------------------------------------------------done")
                 ep_r = self.episode_reward
                 #print('train episode reward:', ep_r)
 

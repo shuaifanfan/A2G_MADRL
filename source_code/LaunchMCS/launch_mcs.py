@@ -522,7 +522,7 @@ class EnvUCS(object):
                 energy_consumption_all += energy_consuming
                 #uav_reward[type][uav_index] -= energy_consuming * 1e-6
                 distance[type][uav_index] += dis
-            
+          
         if self.NOMA_MODE:#true
             relay_dict = self._relay_association()
             if self.POI_DECISION_MODE:
@@ -578,7 +578,6 @@ class EnvUCS(object):
                     r, collected_data = self._collect_data_from_poi(type, uav_index, collect_time)
 
                 self.uav_data_collect[type][uav_index].append(collected_data)
-
                 uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
                 # print( uav_reward[type][uav_index])
 
@@ -926,6 +925,7 @@ class EnvUCS(object):
     
     def _access_determin(self, CHANNELS,carrier1_actions=None):
         '''
+        limited_collection: 限制采集范围,在carrier和uav中不同，是9999还是500？
         :param CHANNELS: 信道数量
         :return: sorted_access, 形如 {'uav': [[0, 0, 0], [0, 0, 0], [0, 0, 0]], 'carrier': [[0, 0, 0]]}
         '''
@@ -978,6 +978,11 @@ class EnvUCS(object):
 
     def get_valid_pois(self, CHANNELS, dis_list, distances, threshold, type):
         pois = np.argsort(dis_list)[:CHANNELS]
+        # print("type",type)
+        # print("threshold",threshold)
+        # print("distatances",distances)
+        # print("pois:前channel个吞吐量较大的poi的索引",pois)
+        # print("distances[pois]:前channel个吞吐量较大的poi的距离",distances[pois])
         pois = pois[distances[pois] < threshold]
         if type == 'carrier':
             pois = pois[dis_list[pois] < 0]

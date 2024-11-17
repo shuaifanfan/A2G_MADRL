@@ -31,9 +31,8 @@ class Roadmap():
             self.max_dis_x = 2100.207579392558
             self.max_dis_y = 2174.930950809533
         elif dataset_str =='Rome':
-            self.max_dis_x = 2176.9952630521047
-            self.max_dis_y = 2241.0915859875945
-        
+            self.max_dis_x = 5997.844092533406
+            self.max_dis_y = 6152.200368709555
 
     def lonlat2pygamexy(self, lon, lat):
         '''
@@ -69,8 +68,8 @@ def get_map_props():
             },
         'Rome':
             {
-                 'lower_left': [12.4758, 41.8822],  
-                'upper_right': [12.5028, 41.9018]
+                 'lower_left': [12.4523, 41.865],
+                'upper_right': [12.5264, 41.919]
             }
     }
     return map_props
