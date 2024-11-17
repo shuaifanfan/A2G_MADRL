@@ -741,6 +741,32 @@ class EnvUCS(object):
         info['Metric/'+SENSING_EFFICIENCY_NAME] = data_collect_all.item() / (aoi * t_all)
         info['Metric/a_sensing_efficiency_only_uav_energy'] = data_collect_all.item() / (aoi * uav_tall)
         info['Metric/a_sensing_efficiency(Mbps_kwh)'] = 3600000/1000 * data_collect_all.item() / (self.POI_NUM*self.step_count*aoi * t_all)
+      
+      
+        #new metircs by zf
+        #AOI归一化阈值，n_all_agent*n_channel是一个collect能照顾到的最大的poi数量，用总共poi数量除以这个值，得到k个step才能逛完所有的poi，因此用6*k作为poi能容忍的最大时间
+        aoi_threshold = 6 * self.POI_NUM / (self.n_agents * self.CHANNEL_NUM)
+        aoi_norm = aoi/aoi_threshold
+        #数据总量
+        init_data_all = self.POI_INIT_DATA * self.POI_NUM
+        data_collect_norm = data_collect_all.item() / init_data_all
+        all_energy_consuming = 0
+        for type in self.UAV_TYPE:
+            all_energy_consuming += np.sum(np.sum(self.uav_energy_consuming_list[type]))
+        energy_consuming_norm = all_energy_consuming / (self.INITIAL_ENERGY['uav'] * self.NUM_UAV['uav'] + self.INITIAL_ENERGY['carrier'] * self.NUM_UAV['carrier'])
+        info['Metric/normalized_efficiency'] = data_collect_norm/(aoi_norm*energy_consuming_norm)
+
+        #计算AOI方差,需要平衡这些数值的大小，方便组合，在单步reward和总体metrics，都要考虑到这个问题
+        aoi_var = np.var(self.aoi_history)/1000
+        info['Metric/aoi_var_norm'] = aoi_var
+        info['Metric/energy_consuming_norm'] = energy_consuming_norm
+        info['Metric/aoi_norm'] = aoi_norm
+        info['Metric/data_collection_ratio'] = data_collect_norm
+        info['Metric/normalized_efficiency_with_aoivar'] = data_collect_norm/(aoi_norm*t_all*aoi_var)
+         #end new metrics
+
+
+
         #info['Metric/Data_Throughput'] = data_collect_all.item() / (aoi)
         # if self.TWO_STAGE_MODE:
         #     info['Metric/Data_Throughput_old'] = rl_rate_all/(self.step_count*sum([self.NUM_UAV[type] for type in self.UAV_TYPE]))
