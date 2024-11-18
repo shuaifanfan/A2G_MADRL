@@ -2318,11 +2318,25 @@ class EnvUCS(object):
                  #下面求VOI的部分，added by zf，24.11.18
                 total_voi_decline = 0
                 for channel_index in range(self.CHANNEL_NUM):
+                    # print("begin----------------------------------------------------")
+                    # print("info")
+                    # print("collect time",collect_time)
+                    # print("collected_data",collected_data)
+                    # print("relayed_dict",relay_dict)
+                    # print("collected_list",collected_list)
+                    # print("temp_poi_aoi_list",temp_poi_aoi_list)
+                    # print("type",type)
+                    # print("uav_index",uav_index)
                     collected_data_this_channel = collected_list[channel_index]
+                    #print("collected_data_this_channel",collected_data_this_channel)
                     aoi_this_channel = temp_poi_aoi_list[channel_index]
+                    #print("aoi_this_channel",aoi_this_channel)
                     voi_lambda = min(collected_data_this_channel/self.USER_DATA_AMOUNT, aoi_this_channel)
-                    Decline = (exp(self.VOI_K * (voi_lambda - aoi_this_channel) ) - exp(-aoi_this_channel))/self.VOI_K
-                    assert voi_lambda >= Decline
+                    #print("voi_lambda",voi_lambda)
+                    Decline = (exp(self.VOI_K * (voi_lambda - aoi_this_channel) ) - exp(-self.VOI_K * aoi_this_channel))/self.VOI_K
+                    #print("Decline",Decline)
+                    #print("end----------------------------------------------------")
+                    assert voi_lambda >= Decline 
                     voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
                     total_voi_decline += voi_decline
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
