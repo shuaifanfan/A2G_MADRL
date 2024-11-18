@@ -76,6 +76,13 @@ def parse_args(old_args=None):
     parser.add_argument('--use_clipped_value_loss', action='store_false', default=True)
     parser.add_argument('--use_huber_loss', action='store_false', default=True)
     parser.add_argument('--use_valuenorm', action='store_true', default=False)
+
+    #addedy bu zf，下面这两个单步reward先不用，只看一下原来的code，能否起到下面这两个metrics的效果
+    parser.add_argument('--use_aoi_var', action='store_true', default=False)#在单步 reward中加入aoi的方差
+    # Value of Information
+    parser.add_argument('--use_voi', action='store_true', default=False) #在单步 reward中减去衰减的部分
+    parser.add_argument('--voi_beta', type=float, default=0.8)
+    parser.add_argument('--voi_k', type=float, default=0.1)
     # tune env
     ## setting
     parser.add_argument('--limited_collection', action='store_true')
@@ -168,6 +175,11 @@ def parse_args(old_args=None):
             'two_stage_mode':input_args.two_stage_mode,
             "rl_greedy_reward":input_args.rl_greedy_reward,
             "near_selection_mode":input_args.near_selection_mode,
+            
+            #added by zf, value of information, 24.11.18
+            "use_voi":input_args.use_voi,
+            "voi_beta":input_args.voi_beta,
+            "voi_k":input_args.voi_k,
         }
     else:
         env_args = {

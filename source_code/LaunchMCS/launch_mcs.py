@@ -18,6 +18,7 @@ from LaunchMCS import shared_feature_list
 from tqdm import tqdm
 from gym import spaces
 from collections import OrderedDict
+from math import exp
 from importlib import import_module
 
 np.seterr(all="raise")
@@ -31,7 +32,7 @@ class EnvUCS(object):
     def __init__(self, args=None, **kwargs):
         if args != None:
             self.args = args
-        self.config = Config(args)
+        self.config = Config(args) #里面有env默认参数，更高优先级的是main_DPPO.py里面的args,会覆盖这里的参数
         map_number = self.config.dict['map']
         self.REDUCE_POI = self.config('reduce_poi')
         self.load_map(map_number)
@@ -51,6 +52,10 @@ class EnvUCS(object):
         self.TIME_SLOT = self.config("time_slot")
         self.SAVE_COUNT = self.config('seed')
         self.USE_HGCN = self.config('use_hgcn')
+
+        self.USE_VOI = self.config('use_voi')
+        self.VOI_BETA = self.config('voi_beta')
+        self.VOI_K = self.config('voi_k')
 
         self.CONCAT_OBS = self.config("concat_obs")
         self.POI_INIT_DATA = self.config("poi_init_data")
@@ -373,6 +378,8 @@ class EnvUCS(object):
         self.uav_state = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.uav_energy_consuming_list = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.uav_data_collect = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.uav_voi_collect = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.uav_voi_decline = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.greedy_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.rl_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
 
@@ -565,7 +572,7 @@ class EnvUCS(object):
                 collect_time = max(0, self.TIME_SLOT - distance[type][uav_index] / self.UAV_SPEED[type])
 
                 if self.NOMA_MODE:
-                    r, collected_data, data_rate, uav_poi, ugv_poi = (
+                    r, collected_data, data_rate, uav_poi, ugv_poi, collected_list, temp_poi_aoi_list = (
                         self._collect_data_by_noma(type, uav_index, relay_dict, sorted_access,
                                                    collect_time))
                     all_uav_pois.extend(uav_poi)
@@ -579,6 +586,21 @@ class EnvUCS(object):
                     r, collected_data = self._collect_data_from_poi(type, uav_index, collect_time)
 
                 self.uav_data_collect[type][uav_index].append(collected_data)
+                #下面求VOI的部分，added by zf，24.11.18
+                total_voi_decline = 0
+                for channel_index in range(self.CHANNEL_NUM):
+                    collected_data_this_channel = collected_list[channel_index]
+                    aoi_this_channel = temp_poi_aoi_list[channel_index]
+                    voi_lambda = min(collected_data_this_channel/self.USER_DATA_AMOUNT, aoi_this_channel)
+                    Decline = (exp(self.VOI_K * (aoi_this_channel - voi_lambda) ) - exp(self.VOI_K*aoi_this_channel))/self.VOI_K
+                    assert voi_lambda >= Decline
+                    voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
+                    total_voi_decline += voi_decline
+                
+                self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
+                self.uav_voi_decline[type][uav_index].append(total_voi_decline)
+                #VOI部分结束,added by zf,24.11.18
+
                 uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
                 # print( uav_reward[type][uav_index])
 
@@ -747,23 +769,52 @@ class EnvUCS(object):
         #AOI归一化阈值，n_all_agent*n_channel是一个collect能照顾到的最大的poi数量，用总共poi数量除以这个值，得到k个step才能逛完所有的poi，因此用6*k作为poi能容忍的最大时间
         aoi_threshold = 6 * self.POI_NUM / (self.n_agents * self.CHANNEL_NUM)
         aoi_norm = aoi/aoi_threshold
-        #数据总量
-        init_data_all = self.POI_INIT_DATA * self.POI_NUM
-        data_collect_norm = data_collect_all.item() / init_data_all
+        
+        data_collect_norm = data_collect_all.item() / total_data_generated
         all_energy_consuming = 0
         for type in self.UAV_TYPE:
             all_energy_consuming += np.sum(np.sum(self.uav_energy_consuming_list[type]))
         energy_consuming_norm = all_energy_consuming / (self.INITIAL_ENERGY['uav'] * self.NUM_UAV['uav'] + self.INITIAL_ENERGY['carrier'] * self.NUM_UAV['carrier'])
-        info['Metric/normalized_efficiency'] = data_collect_norm/(aoi_norm*energy_consuming_norm)
+        info['Metric/zf/normalized_efficiency'] = data_collect_norm/(aoi_norm*energy_consuming_norm)
 
+        voi_decline_all = sum([sum(self.uav_voi_decline[type][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type])])
+        voi_all = sum([sum(self.uav_voi_collect[type][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type])])
+        voi_all_norm = voi_all/total_data_generated
+        void_decline_norm = voi_decline_all/total_data_generated
+        info['Metric/zf/voi_norm'] = voi_all_norm
+        info['Metric/zf/voi_decline_norm'] = void_decline_norm
         #计算AOI方差,需要平衡这些数值的大小，方便组合，在单步reward和总体metrics，都要考虑到这个问题
-        aoi_var = np.var(self.aoi_history)/1000
-        info['Metric/aoi_var_norm'] = aoi_var
-        info['Metric/energy_consuming_norm'] = energy_consuming_norm
-        info['Metric/aoi_norm'] = aoi_norm
-        info['Metric/data_collection_ratio'] = data_collect_norm
-        info['Metric/normalized_efficiency_with_aoivar'] = data_collect_norm/(aoi_norm*t_all*aoi_var)
-         #end new metrics
+        aoi_var_norm = np.var(self.aoi_history)/1000
+        info['Metric/zf/aoi_var_norm'] = aoi_var_norm
+        info['Metric/zf/energy_consuming_norm'] = energy_consuming_norm
+        info['Metric/zf/aoi_norm'] = aoi_norm
+        info['Metric/zf/data_collection_ratio_norm_from_PoI'] = data_collection_ratio
+        info['Metric/zf/data_collection_ratio_norm_from_Agent'] = data_collect_norm
+        #从agent收集的角度计算的收集率，和从poi收集的角度计算的收集率应该是一样的
+        assert (data_collect_norm / data_collection_ratio) > 0.99 and (data_collect_norm / data_collection_ratio) < 1.01
+        assert data_collect_norm < 1 and data_collection_ratio < 1
+        info['Metric/zf/normalized_efficiency_with_aoivar'] = data_collect_norm/(aoi_norm*energy_consuming_norm*aoi_var_norm)
+        info['Metric/zf/normalized_efficiency_w_aoivar_wo_energy'] = data_collect_norm/(aoi_norm*aoi_var_norm)
+        info['Metric/zf/noramlied_efficiency_with_aoi'] = voi_all_norm/(aoi_norm*energy_consuming_norm*aoi_var_norm)
+        info['Metric/zf/noramlied_efficiency_with_aoi_wo_energy'] = voi_all_norm/(aoi_norm*aoi_var_norm)
+        info['Metric/zf/noramlied_efficiency_with_aoi_decline'] = data_collect_norm/(energy_consuming_norm*aoi_var_norm*void_decline_norm*aoi_norm)
+        info['Metric/zf/noramlied_efficiency_with_aoi_decline_wo_energy'] = data_collect_norm/(aoi_var_norm*void_decline_norm*aoi_norm)
+
+        ##单独看每个type的metircs情况
+        for type in self.UAV_TYPE:
+            voi_decline_all_temp = sum([sum(self.uav_voi_decline[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])
+            voi_all_temp = sum([sum(self.uav_voi_collect[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])
+            voi_all_norm_temp = voi_all_temp/total_data_generated
+            void_decline_norm_temp = voi_decline_all_temp/total_data_generated
+            info[f'Metric/zf/voi_norm_{type}'] = voi_all_norm_temp
+            info[f'Metric/zf/voi_decline_norm_{type}'] = void_decline_norm_temp
+            energy_temp = np.sum(np.sum(self.uav_energy_consuming_list[type]))
+            energy_consuming_norm_temp = energy_temp / (self.INITIAL_ENERGY[type] * self.NUM_UAV[type])
+            info[f'Metric/zf/energy_consuming_norm_{type}'] = energy_consuming_norm_temp
+            data_collected_temp = np.sum([sum(self.uav_data_collect[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])
+            data_collect_norm_temp = data_collected_temp / total_data_generated
+            info[f'Metric/zf/data_collection_ratio_norm_from_Agent_{type}'] = data_collect_norm_temp
+         #end new metrics by zf
 
 
 
@@ -1028,14 +1079,17 @@ class EnvUCS(object):
         g2a_rate_list = []
         uav_pois = []
         ugv_pois = []
+        temp_poi_aoi_list = []
         if self.DEBUG_MODE:
             print(f'====设备类型={type}，ID={uav_index}====')
         if collect_time <= 0:
-            return 0, 0, 0 , uav_pois, ugv_pois
+            return (0, 0, 0 , uav_pois, ugv_pois, [0]*self.CHANNEL_NUM, [0]*self.CHANNEL_NUM)
         for channel in range(self.CHANNEL_NUM):
             poi_i_index = sorted_access[type][uav_index][channel]  # 确定从哪个poi收集数据
             if poi_i_index == -1:
                 data_rate_list.append(0)
+                collect_list.append(0)
+                temp_poi_aoi_list.append(0)
                 continue
             poi_i_pos = self.poi_position[poi_i_index]
             # 机和车以不同的方式计算capacity，遵循noma模型
@@ -1133,6 +1187,7 @@ class EnvUCS(object):
                 self.poi_value[poi_i_index] = 0
 
             elif self.COLLECT_MODE == 2:
+                temp_poi_aoi_list.append(self.poi_value[poi_i_index]/self.USER_DATA_AMOUNT)
                 self.poi_value[poi_i_index] -= collected_data
                 reward_list.append(collected_data * self.reward_co[type][poi_i_index])
                 collect_list.append(collected_data)
@@ -1141,7 +1196,7 @@ class EnvUCS(object):
             self.last_collect[self.step_count][type][uav_index][poi_i_index] = 1
 
         return (sum(reward_list), sum(collect_list),
-                sum(data_rate_list), uav_pois, ugv_pois)
+                sum(data_rate_list), uav_pois, ugv_pois, collect_list, temp_poi_aoi_list)
         # sum(g2a_rate_list) / max(1, len(g2a_rate_list)),
         # sum(relay_rate_list) / max(1, len(relay_rate_list)))
 
@@ -2242,7 +2297,7 @@ class EnvUCS(object):
                 collect_time = max(0, self.TIME_SLOT - distance[type][uav_index] / self.UAV_SPEED[type])
 
                 if self.NOMA_MODE:
-                    r, collected_data, data_rate, uav_poi, ugv_poi = (
+                    r, collected_data, data_rate, uav_poi, ugv_poi, collected_list, temp_poi_aoi_list = (
                         self._collect_data_by_noma(type, uav_index, relay_dict, sorted_access,
                                                    collect_time))
                     all_uav_pois.extend(uav_poi)
@@ -2259,6 +2314,21 @@ class EnvUCS(object):
                 energy_consumption_all += energy_consuming
                 uav_reward[type][uav_index] -= energy_consuming * self.energy_penalty
                 self.uav_data_collect[type][uav_index].append(collected_data)
+
+                 #下面求VOI的部分，added by zf，24.11.18
+                total_voi_decline = 0
+                for channel_index in range(self.CHANNEL_NUM):
+                    collected_data_this_channel = collected_list[channel_index]
+                    aoi_this_channel = temp_poi_aoi_list[channel_index]
+                    voi_lambda = min(collected_data_this_channel/self.USER_DATA_AMOUNT, aoi_this_channel)
+                    Decline = (exp(self.VOI_K * (aoi_this_channel - voi_lambda) ) - exp(self.VOI_K*aoi_this_channel))/self.VOI_K
+                    assert voi_lambda >= Decline
+                    voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
+                    total_voi_decline += voi_decline
+                
+                self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
+                self.uav_voi_decline[type][uav_index].append(total_voi_decline)
+                #上面求VOI的部分，added by zf，24.11.18
 
                 uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
                 # print( uav_reward[type][uav_index])

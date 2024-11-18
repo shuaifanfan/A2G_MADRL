@@ -1,4 +1,7 @@
-if 1:
-    a = 3
-
-print(a)
+def aa():
+    return 1 ,[],3
+ac = aa()
+d ,e ,f = ac
+print(d)
+print(e)
+print(f)

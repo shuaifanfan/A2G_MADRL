@@ -22,7 +22,8 @@ class Config(object):
             # print("Config:")
             # print(self.dict)
 
-    def __call__(self, attr):
+    def __call__(self, attr): #magic method，怕launcm.msc的env里太懒了，不用self.config.dict['xxx']，直接self.config('xxx')就行,把类当成函数用
+        #print("self.dict.keys():",self.dict.keys())
         assert attr in self.dict.keys(), print('key error[', attr, ']')
         return self.dict[attr]
 
@@ -96,6 +97,8 @@ class Config(object):
             "uav_poi_dis": -1,
             "colla_co": 0.2,
             "carrier_explore_reward": False,
+
+            #"voi_beta": 0.5,
         }
 
     def generate_task(self):
