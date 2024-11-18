@@ -795,10 +795,10 @@ class EnvUCS(object):
         assert data_collect_norm < 1 and data_collection_ratio < 1
         info['Metric/zf/normalized_efficiency_with_aoivar'] = data_collect_norm/(aoi_norm*energy_consuming_norm*aoi_var_norm)
         info['Metric/zf/normalized_efficiency_w_aoivar_wo_energy'] = data_collect_norm/(aoi_norm*aoi_var_norm)
-        info['Metric/zf/noramlied_efficiency_with_aoi'] = voi_all_norm/(aoi_norm*energy_consuming_norm*aoi_var_norm)
-        info['Metric/zf/noramlied_efficiency_with_aoi_wo_energy'] = voi_all_norm/(aoi_norm*aoi_var_norm)
-        info['Metric/zf/noramlied_efficiency_with_aoi_decline'] = data_collect_norm/(energy_consuming_norm*aoi_var_norm*void_decline_norm*aoi_norm)
-        info['Metric/zf/noramlied_efficiency_with_aoi_decline_wo_energy'] = data_collect_norm/(aoi_var_norm*void_decline_norm*aoi_norm)
+        info['Metric/zf/noramlied_efficiency_with_voi'] = voi_all_norm/(aoi_norm*energy_consuming_norm*aoi_var_norm)
+        info['Metric/zf/noramlied_efficiency_with_voi_wo_energy'] = voi_all_norm/(aoi_norm*aoi_var_norm)
+        info['Metric/zf/noramlied_efficiency_with_voi_decline'] = data_collect_norm/(energy_consuming_norm*aoi_var_norm*void_decline_norm*aoi_norm)
+        info['Metric/zf/noramlied_efficiency_with_voi_decline_wo_energy'] = data_collect_norm/(aoi_var_norm*void_decline_norm*aoi_norm)
 
         ##单独看每个type的metircs情况
         for type in self.UAV_TYPE:
@@ -2321,11 +2321,10 @@ class EnvUCS(object):
                     collected_data_this_channel = collected_list[channel_index]
                     aoi_this_channel = temp_poi_aoi_list[channel_index]
                     voi_lambda = min(collected_data_this_channel/self.USER_DATA_AMOUNT, aoi_this_channel)
-                    Decline = (exp(self.VOI_K * (aoi_this_channel - voi_lambda) ) - exp(self.VOI_K*aoi_this_channel))/self.VOI_K
+                    Decline = (exp(self.VOI_K * (voi_lambda - aoi_this_channel) ) - exp(-aoi_this_channel))/self.VOI_K
                     assert voi_lambda >= Decline
                     voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
                     total_voi_decline += voi_decline
-                
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
                 self.uav_voi_decline[type][uav_index].append(total_voi_decline)
                 #上面求VOI的部分，added by zf，24.11.18
