@@ -101,7 +101,7 @@ class DecodeBlock(nn.Module):
         self.ln2 = nn.LayerNorm(n_embd)
         self.ln3 = nn.LayerNorm(n_embd)
         self.attn1 = SelfAttention(n_embd, n_head, n_agent, masked=True, not_condition=not_condition)
-        self.attn2 = SelfAttention(n_embd, n_head, n_agent, masked=True, not_condition=not_condition)
+        self.attn2 = SelfAttention(n_embd, n_head, n_agent, masked=False, not_condition=not_condition)
         self.mlp = nn.Sequential(
             init_(nn.Linear(n_embd, 1 * n_embd), activate=True),
             nn.GELU(),
@@ -111,7 +111,7 @@ class DecodeBlock(nn.Module):
     def forward(self, x, rep_enc):
         #print("changed transfomer----------------------------------------------------------------------------------")
         x = self.ln1(x + self.attn1(x, x, x))
-        x = self.ln2(rep_enc + self.attn2(key=x, value=x, query=rep_enc))
+        x = self.ln2(x + self.attn2(key=rep_enc, value=rep_enc, query=x))
         x = self.ln3(x + self.mlp(x))
         return x
 
