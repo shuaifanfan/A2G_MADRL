@@ -592,7 +592,7 @@ class EnvUCS(object):
                     collected_data_this_channel = collected_list[channel_index]
                     aoi_this_channel = temp_poi_aoi_list[channel_index]
                     voi_lambda = min(collected_data_this_channel/self.USER_DATA_AMOUNT, aoi_this_channel)
-                    Decline = (exp(self.VOI_K * (aoi_this_channel - voi_lambda) ) - exp(self.VOI_K*aoi_this_channel))/self.VOI_K
+                    Decline = (exp(self.VOI_K * (voi_lambda - aoi_this_channel) ) - exp(-self.VOI_K * aoi_this_channel))/self.VOI_K
                     assert voi_lambda >= Decline
                     voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
                     total_voi_decline += voi_decline
