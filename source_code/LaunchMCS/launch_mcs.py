@@ -380,6 +380,8 @@ class EnvUCS(object):
         self.uav_data_collect = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.uav_voi_collect = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.uav_voi_decline = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.uav_voi_loss_ratio = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.uav_voi_lambda = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.greedy_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.rl_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
 
@@ -588,6 +590,8 @@ class EnvUCS(object):
                 self.uav_data_collect[type][uav_index].append(collected_data)
                 #下面求VOI的部分，added by zf，24.11.18
                 total_voi_decline = 0
+                total_voi_loss_ratio = []
+                total_lambda = []
                 for channel_index in range(self.CHANNEL_NUM):
                     collected_data_this_channel = collected_list[channel_index]
                     aoi_this_channel = temp_poi_aoi_list[channel_index]
@@ -596,7 +600,13 @@ class EnvUCS(object):
                     assert voi_lambda >= Decline
                     voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
                     total_voi_decline += voi_decline
+                    #voi的及时性相关部分：
+                    voi_loss_ratio = (voi_lambda-Decline)/voi_lambda
+                    total_voi_loss_ratio.append(voi_loss_ratio)
+                    total_lambda.append(voi_lambda)
                 
+                self.uav_voi_loss_ratio[type][uav_index].append( sum(total_voi_loss_ratio)/self.CHANNEL_NUM ) # (lambda- D) / lambda 的平均值
+                self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/self.CHANNEL_NUM ) #lambda的平均值
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
                 self.uav_voi_decline[type][uav_index].append(total_voi_decline)
                 #VOI部分结束,added by zf,24.11.18
@@ -783,6 +793,13 @@ class EnvUCS(object):
         void_decline_norm = voi_decline_all/total_data_generated
         info['Metric/zf/voi_norm'] = voi_all_norm
         info['Metric/zf/voi_decline_norm'] = void_decline_norm
+        #n_thread , n_step , n_agent , n_channel , n_dim ,下面是先对step求和，在对所有agent求和
+        voi_loss_ratio = sum([sum(self.uav_voi_loss_ratio[type][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type])])
+        voi_loss_ratio = voi_loss_ratio/(self.step_count*sum([self.NUM_UAV[type] for type in self.UAV_TYPE]))
+        info['Metric/zf/voi_loss_ratio'] = voi_loss_ratio
+        voi_lambda = sum([sum(self.uav_voi_lambda[type][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type])])
+        voi_lambda = voi_lambda/(self.step_count*sum([self.NUM_UAV[type] for type in self.UAV_TYPE]))
+        info['Metric/zf/voi_lambda'] = voi_lambda
         #计算AOI方差,需要平衡这些数值的大小，方便组合，在单步reward和总体metrics，都要考虑到这个问题
         aoi_var_norm = np.var(self.aoi_history)/1000
         info['Metric/zf/aoi_var_norm'] = aoi_var_norm
@@ -799,6 +816,8 @@ class EnvUCS(object):
         info['Metric/zf/noramlied_efficiency_with_voi_wo_energy'] = voi_all_norm/(aoi_norm*aoi_var_norm)
         info['Metric/zf/noramlied_efficiency_with_voi_decline'] = data_collect_norm/(energy_consuming_norm*aoi_var_norm*void_decline_norm*aoi_norm)
         info['Metric/zf/noramlied_efficiency_with_voi_decline_wo_energy'] = data_collect_norm/(aoi_var_norm*void_decline_norm*aoi_norm)
+        info['Metric/zf/noramlied_efficiency_with_voi_loss_ratio'] = data_collect_norm/(energy_consuming_norm*aoi_var_norm*voi_loss_ratio*aoi_norm)
+        info['Metric/zf/noramlied_efficiency_with_voi_loss_ratio_wo_energy'] = data_collect_norm/(aoi_var_norm*voi_loss_ratio*aoi_norm)
 
         ##单独看每个type的metircs情况
         for type in self.UAV_TYPE:
@@ -814,6 +833,12 @@ class EnvUCS(object):
             data_collected_temp = np.sum([sum(self.uav_data_collect[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])
             data_collect_norm_temp = data_collected_temp / total_data_generated
             info[f'Metric/zf/data_collection_ratio_norm_from_Agent_{type}'] = data_collect_norm_temp
+            voi_loss_ratio_temp = sum([sum(self.uav_voi_loss_ratio[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])
+            voi_loss_ratio_temp = voi_loss_ratio_temp/(self.step_count*self.NUM_UAV[type])
+            info[f'Metric/zf/voi_loss_ratio_{type}'] = voi_loss_ratio_temp
+            voi_lambda_temp = sum([sum(self.uav_voi_lambda[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])
+            voi_lambda_temp = voi_lambda_temp/(self.step_count*self.NUM_UAV[type])
+            info[f'Metric/zf/voi_lambda_{type}'] = voi_lambda_temp
          #end new metrics by zf
 
 
@@ -2316,6 +2341,8 @@ class EnvUCS(object):
                 self.uav_data_collect[type][uav_index].append(collected_data)
 
                  #下面求VOI的部分，added by zf，24.11.18
+                total_lambda = []
+                total_voi_loss_ratio = []
                 total_voi_decline = 0
                 for channel_index in range(self.CHANNEL_NUM):
                     # print("begin----------------------------------------------------")
@@ -2339,6 +2366,13 @@ class EnvUCS(object):
                     assert voi_lambda >= Decline 
                     voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
                     total_voi_decline += voi_decline
+                    #voi的及时性相关部分：
+                    voi_loss_ratio = (voi_lambda-Decline)/voi_lambda
+                    total_voi_loss_ratio.append(voi_loss_ratio)
+                    total_lambda.append(voi_lambda)
+                
+                self.uav_voi_loss_ratio[type][uav_index].append( sum(total_voi_loss_ratio)/self.CHANNEL_NUM ) # (lambda- D) / lambda 的平均值
+                self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/self.CHANNEL_NUM ) #lambda的平均值
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
                 self.uav_voi_decline[type][uav_index].append(total_voi_decline)
                 #上面求VOI的部分，added by zf，24.11.18
