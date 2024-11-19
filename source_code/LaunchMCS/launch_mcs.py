@@ -605,9 +605,9 @@ class EnvUCS(object):
                         voi_loss_ratio = (voi_lambda-Decline)/voi_lambda
                         total_voi_loss_ratio.append(voi_loss_ratio)
                         total_lambda.append(voi_lambda)
-                
-                self.uav_voi_loss_ratio[type][uav_index].append( sum(total_voi_loss_ratio)/len(total_voi_loss_ratio) ) # (lambda- D) / lambda 的平均值
-                self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/len(total_lambda) ) #lambda的平均值
+
+                self.uav_voi_loss_ratio[type][uav_index].append( sum(total_voi_loss_ratio)/(len(total_voi_loss_ratio)+1e-8) ) # (lambda- D) / lambda 的平均值
+                self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/(len(total_lambda)+1e-8) ) #lambda的平均值
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
                 self.uav_voi_decline[type][uav_index].append(total_voi_decline)
                 #VOI部分结束,added by zf,24.11.18
@@ -2373,8 +2373,8 @@ class EnvUCS(object):
                         total_voi_loss_ratio.append(voi_loss_ratio)
                         total_lambda.append(voi_lambda)
                 
-                self.uav_voi_loss_ratio[type][uav_index].append( sum(total_voi_loss_ratio)/len(total_voi_loss_ratio) ) # (lambda- D) / lambda 的平均值
-                self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/len(total_lambda) ) #lambda的平均值
+                self.uav_voi_loss_ratio[type][uav_index].append( sum(total_voi_loss_ratio)/(len(total_voi_loss_ratio)+1e-8) ) # (lambda- D) / lambda 的平均值
+                self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/(len(total_lambda)+1e-8) ) #lambda的平均值
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
                 self.uav_voi_decline[type][uav_index].append(total_voi_decline)
                 #上面求VOI的部分，added by zf，24.11.18
