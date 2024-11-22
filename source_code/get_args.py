@@ -80,7 +80,8 @@ def parse_args(old_args=None):
     #addedy bu zf，下面这两个单步reward先不用，只看一下原来的code，能否起到下面这两个metrics的效果
     parser.add_argument('--use_aoi_var', action='store_true', default=False)#在单步 reward中加入aoi的方差
     # Value of Information
-    parser.add_argument('--use_voi', action='store_true', default=False) #在单步 reward中减去衰减的部分
+    parser.add_argument('--use_voi', type=int,default=0,
+                        choices=[0,1,2])#默认不用voi，1表示在单步reward中，使用voi总体代替collect_data,2表示只是用voi的第二部分代替collect_data
     parser.add_argument('--voi_beta', type=float, default=0.8)
     parser.add_argument('--voi_k', type=float, default=0.1)
     # tune env

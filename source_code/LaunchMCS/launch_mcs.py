@@ -382,6 +382,11 @@ class EnvUCS(object):
         self.uav_voi_decline = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.uav_voi_loss_ratio = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.uav_voi_lambda = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.uav_voi_second_part = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.history_step_reward_1 = {key+'data/voi': [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.history_step_reward_2 = {key+'energy': [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.history_step_reward_3 = {key+'aoi': [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.history_step_reward = {**self.history_step_reward_1, **self.history_step_reward_2, **self.history_step_reward_3}
         self.greedy_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.rl_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
 
@@ -530,6 +535,7 @@ class EnvUCS(object):
                 self._use_energy(type, uav_index, energy_consuming)
                 energy_consumption_all += energy_consuming
                 uav_reward[type][uav_index] -= energy_consuming * self.energy_penalty
+                self.history_step_reward[type+'energy'][uav_index].append(-energy_consuming * self.energy_penalty)
                 #uav_reward[type][uav_index] -= energy_consuming * 1e-6
                 distance[type][uav_index] += dis
           
@@ -592,12 +598,14 @@ class EnvUCS(object):
                 total_voi_decline = 0
                 total_voi_loss_ratio = []
                 total_lambda = []
+                total_voi_second_part = 0
                 for channel_index in range(self.CHANNEL_NUM):
                     collected_data_this_channel = collected_list[channel_index]
                     aoi_this_channel = temp_poi_aoi_list[channel_index]
                     voi_lambda = min(collected_data_this_channel/self.USER_DATA_AMOUNT, aoi_this_channel)
                     Decline = (exp(self.VOI_K * (voi_lambda - aoi_this_channel) ) - exp(-self.VOI_K * aoi_this_channel))/self.VOI_K
                     assert voi_lambda >= Decline
+                    total_voi_second_part += (1-self.VOI_BETA) * self.USER_DATA_AMOUNT * Decline
                     voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
                     total_voi_decline += voi_decline
                     #voi的及时性相关部分：
@@ -610,9 +618,18 @@ class EnvUCS(object):
                 self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/(len(total_lambda)+1e-8) ) #lambda的平均值
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
                 self.uav_voi_decline[type][uav_index].append(total_voi_decline)
+                self.uav_voi_second_part[type][uav_index].append( total_voi_second_part )
                 #VOI部分结束,added by zf,24.11.18
-
-                uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
+                self.history_step_reward[type+'data/voi'][uav_index].append(r * (10 ** -3))
+                if self.USE_VOI == 0:
+                    uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
+                elif self.USE_VOI ==1:
+                    uav_reward[type][uav_index] += (collected_data - total_voi_decline) * (10 ** -3)
+                elif self.USE_VOI == 2:
+                    uav_reward[type][uav_index] += (total_voi_second_part) * (10 ** -3)
+                else:
+                    raise ValueError("USE_VOI should be 0,1,2")
+                    
                 # print( uav_reward[type][uav_index])
 
                 if type == 'uav':
@@ -658,6 +675,7 @@ class EnvUCS(object):
                             aux = 0
 
                         uav_reward[type][uav_index] += aoi_reward  + aux
+                        self.history_step_reward[type+'aoi'][uav_index].append(aoi_reward)
                         #uav_reward[type][uav_index] = aoi_reward + aux
                         if self.dis_bonus:
                             if type == 'carrier':
@@ -819,6 +837,15 @@ class EnvUCS(object):
         info['Metric/zf/noramlied_efficiency_with_voi_decline_wo_energy'] = data_collect_norm/(aoi_var_norm*void_decline_norm*aoi_norm)
         info['Metric/zf/noramlied_efficiency_with_voi_loss_ratio'] = data_collect_norm/(energy_consuming_norm*aoi_var_norm*voi_loss_ratio*aoi_norm)
         info['Metric/zf/noramlied_efficiency_with_voi_loss_ratio_wo_energy'] = data_collect_norm/(aoi_var_norm*voi_loss_ratio*aoi_norm)
+        voi_sencond_part_norm = sum([sum(self.uav_voi_second_part[type][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type])])/total_data_generated
+        info['Metric/zf/voi_second_part_norm'] = voi_sencond_part_norm
+        data_step_reward = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
+        aoi_step_reward = sum(sum(self.history_step_reward[type+'aoi'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
+        energy_step_reward = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
+        info['Metric/zf/data_step_reward'] = data_step_reward
+        info['Metric/zf/aoi_step_reward'] = aoi_step_reward
+        info['Metric/zf/energy_step_reward'] = energy_step_reward
+        info['Metric/zf/total_step_reward'] = data_step_reward + aoi_step_reward + energy_step_reward
 
         ##单独看每个type的metircs情况
         for type in self.UAV_TYPE:
@@ -840,6 +867,15 @@ class EnvUCS(object):
             voi_lambda_temp = sum([sum(self.uav_voi_lambda[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])
             voi_lambda_temp = voi_lambda_temp/(self.step_count*self.NUM_UAV[type])
             info[f'Metric/zf/voi_lambda_{type}'] = voi_lambda_temp
+            voi_second_part_norm_temp = sum([sum(self.uav_voi_second_part[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])/total_data_generated
+            info[f'Metric/zf/voi_second_part_norm_{type}'] = voi_second_part_norm_temp
+            data_step_reward_temp = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
+            aoi_step_reward_temp = sum(sum(self.history_step_reward[type+'aoi'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
+            energy_step_reward_temp = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
+            info[f'Metric/zf/data_step_reward_{type}'] = data_step_reward_temp
+            info[f'Metric/zf/aoi_step_reward_{type}'] = aoi_step_reward_temp
+            info[f'Metric/zf/energy_step_reward_{type}'] = energy_step_reward_temp
+            info[f'Metric/zf/total_step_reward_{type}'] = data_step_reward_temp + aoi_step_reward_temp + energy_step_reward_temp
          #end new metrics by zf
 
 
@@ -2339,12 +2375,14 @@ class EnvUCS(object):
                 energy_consuming = self._cal_energy_consuming(self.distance[type][uav_index], type)
                 energy_consumption_all += energy_consuming
                 uav_reward[type][uav_index] -= energy_consuming * self.energy_penalty
+                self.history_step_reward[type+'energy'][uav_index].append(-energy_consuming * self.energy_penalty)
                 self.uav_data_collect[type][uav_index].append(collected_data)
 
                  #下面求VOI的部分，added by zf，24.11.18
                 total_lambda = []
                 total_voi_loss_ratio = []
                 total_voi_decline = 0
+                total_voi_second_part = 0
                 for channel_index in range(self.CHANNEL_NUM):
                     # print("begin----------------------------------------------------")
                     # print("info")
@@ -2365,6 +2403,7 @@ class EnvUCS(object):
                     #print("Decline",Decline)
                     #print("end----------------------------------------------------")
                     assert voi_lambda >= Decline 
+                    total_voi_second_part += (1-self.VOI_BETA) * self.USER_DATA_AMOUNT * Decline
                     voi_decline = (1-self.VOI_BETA)*self.USER_DATA_AMOUNT*(voi_lambda-Decline)
                     total_voi_decline += voi_decline
                     if voi_lambda > 0:
@@ -2377,9 +2416,17 @@ class EnvUCS(object):
                 self.uav_voi_lambda[type][uav_index].append( sum(total_lambda)/(len(total_lambda)+1e-8) ) #lambda的平均值
                 self.uav_voi_collect[type][uav_index].append(collected_data - total_voi_decline)
                 self.uav_voi_decline[type][uav_index].append(total_voi_decline)
+                self.uav_voi_second_part[type][uav_index].append(total_voi_second_part)
                 #上面求VOI的部分，added by zf，24.11.18
-
-                uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
+                self.history_step_reward[type+'data/voi'][uav_index].append(r * (10 ** -3))
+                if self.USE_VOI == 0:
+                    uav_reward[type][uav_index] += r * (10 ** -3)  # * (2**-4)
+                elif self.USE_VOI ==1:
+                    uav_reward[type][uav_index] += (collected_data - total_voi_decline) * (10 ** -3)
+                elif self.USE_VOI == 2:
+                    uav_reward[type][uav_index] += (total_voi_second_part) * (10 ** -3)
+                else:
+                    raise ValueError("Invalid USE_VOI value")
                 # print( uav_reward[type][uav_index])
 
                 if type == 'uav':
@@ -2428,6 +2475,7 @@ class EnvUCS(object):
                        
                         
                         uav_reward[type][uav_index] += aoi_reward  + aux
+                        self.history_step_reward[type+'aoi'][uav_index].append(aoi_reward)
                         if self.dis_bonus:
                             if type == 'carrier':
                                 dis = 0
