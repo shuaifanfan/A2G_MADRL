@@ -535,6 +535,8 @@ class EnvUCS(object):
                 self._use_energy(type, uav_index, energy_consuming)
                 energy_consumption_all += energy_consuming
                 uav_reward[type][uav_index] -= energy_consuming * self.energy_penalty
+                # if type == 'carrier':
+                #     print("energy_reward", -energy_consuming * self.energy_penalty)
                 self.history_step_reward[type+'energy'][uav_index].append(-energy_consuming * self.energy_penalty)
                 #uav_reward[type][uav_index] -= energy_consuming * 1e-6
                 distance[type][uav_index] += dis
@@ -676,6 +678,7 @@ class EnvUCS(object):
 
                         uav_reward[type][uav_index] += aoi_reward  + aux
                         self.history_step_reward[type+'aoi'][uav_index].append(aoi_reward)
+                        #print("aoi_reward:",aoi_reward)
                         #uav_reward[type][uav_index] = aoi_reward + aux
                         if self.dis_bonus:
                             if type == 'carrier':
@@ -2372,10 +2375,8 @@ class EnvUCS(object):
                 else:
                     r, collected_data = self._collect_data_from_poi(type, uav_index, collect_time)
 
-                energy_consuming = self._cal_energy_consuming(self.distance[type][uav_index], type)
-                energy_consumption_all += energy_consuming
-                uav_reward[type][uav_index] -= energy_consuming * self.energy_penalty
-                self.history_step_reward[type+'energy'][uav_index].append(-energy_consuming * self.energy_penalty)
+                
+                
                 self.uav_data_collect[type][uav_index].append(collected_data)
 
                  #下面求VOI的部分，added by zf，24.11.18

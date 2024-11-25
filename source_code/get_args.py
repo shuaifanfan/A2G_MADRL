@@ -58,7 +58,7 @@ def parse_args(old_args=None):
     parser.add_argument('--lr_scheduler', type=str, default='cos')
     parser.add_argument('--use_hgcn', action='store_true', default=False)
     parser.add_argument('--random_permutation', action='store_true', default=False)
-    parser.add_argument('--centralized', action='store_true', default=False)
+    parser.add_argument('--centralized', action='store_false', default=True)
     parser.add_argument('--permutation_strategy', type=str, default='')
     parser.add_argument('--permutation_eps', type=float, default=0.3)
     parser.add_argument('--decay_eps', action='store_true', default=False)

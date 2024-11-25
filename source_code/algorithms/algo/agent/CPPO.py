@@ -291,38 +291,24 @@ class CPPOAgent(nn.ModuleList, AgentBase):
         cols = None
         if random_seq:
             rows, cols = self._shuffle_agent_grid(obs.size(0), self.n_agent_all, self.random_permutation)
+            #format：如果是16个环境，rows.shape是[16, 4]，每一行是当前行号
+            #cols.shape是[16, 4]，每列是当前列号
 
             if self.permutation_strategy != '':
                 cols = self.agent_sequence
                 cols = np.expand_dims(cols, axis=0).repeat(obs.size(0), axis=0)
             if permutation_sequence is not None and self.test:
                 cols = permutation_sequence
-            cent_obs = cent_obs[rows, cols]
+
+            cent_obs = cent_obs[rows, cols] #shape是[batch_size, n_agent, dim]，这里按索引重拍，rows是第0维度的索引，cols是第1维度的索引，
+                                            #所以batch一维打乱顺序，agent一维度按照 advantage的大小重拍，用于后面transformer的决策顺序，
             obs = obs[rows, cols]
             available_actions = available_actions[rows, cols]
             if memory is not None:
                 memory = memory[rows, cols]
 
         t_emb, graph, adj = None, None, None
-        # if self.use_gcn:
-        #     # nodes = torch.cat(
-        #     #     [torch.as_tensor(state['Nodes_' + type], dtype=torch.float32, device=self.device) for type in
-        #     #      self.agent_type], dim=1)
-        #     # edges = torch.cat(
-        #     #     [torch.as_tensor(state['Edges_' + type], dtype=torch.float32, device=self.device) for type in
-        #     #      self.agent_type], dim=1)
-        #     # graph = [nodes, edges]
-        #     nodes = torch.as_tensor(state['Nodes'], dtype=torch.float32, device=self.device)
-        #     edges = torch.as_tensor(state['Edges'], dtype=torch.float32, device=self.device)
-        #     graph = [nodes, edges]
 
-        # if self.use_hgcn:
-        #     adj = {key: torch.as_tensor(state[key], dtype=torch.float32, device=self.device) for key in
-        #            adjacent_name_list}
-
-        # if task_emb is not None: t_emb = torch.cat(
-        #     [torch.as_tensor(task_emb[type], dtype=torch.float32, device=self.device) for type in self.agent_type],
-        #     dim=1)
 
         with torch.no_grad():
             actions, action_log_probs, _, new_memory = self.transformer.get_actions(cent_obs,
@@ -335,11 +321,12 @@ class CPPOAgent(nn.ModuleList, AgentBase):
         if random_seq:
             actions = actions.squeeze(-1)
             action_log_probs = action_log_probs.squeeze(-1)
-            original_order_rows = rows
+            original_order_rows = rows      
             original_order_cols = np.argsort(cols, axis=1)
 
-            restored_actions = np.take_along_axis(actions, original_order_rows, axis=0)
-            restored_actions = np.take_along_axis(restored_actions, original_order_cols, axis=1)
+            restored_actions = np.take_along_axis(actions, original_order_rows, axis=0)         #rows顺序排的，没变
+            restored_actions = np.take_along_axis(restored_actions, original_order_cols, axis=1)  #之前按照advantage的顺序排列agent，现在反排列回来，
+                                                                                                #按照之前的索引排列cols，这里很巧妙的运用了argsort，直接（返还）原来正常的顺序
 
             restored_logprob = np.take_along_axis(action_log_probs, original_order_rows, axis=0)
             restored_logprob = np.take_along_axis(restored_logprob, original_order_cols, axis=1)
