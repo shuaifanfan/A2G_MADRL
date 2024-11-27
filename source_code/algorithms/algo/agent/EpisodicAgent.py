@@ -374,7 +374,7 @@ class EpisodicAgent(nn.ModuleList, AgentBase):
     
 
     def _init_actors(self):
-        if self.decoupled_actor:
+        if self.decoupled_actor:#这个
             actor = DecoupledEpisodicActor(**{
             "use_graph_feature":self.use_graph_feature,
             "graph_output_size":self.n_embd,

@@ -318,7 +318,7 @@ else:
     env_args["save_path"] = "../{}/{}/{}".format('runs', input_args.group, name)
 share_feature = {share_name: getattr(main_env, share_name) for share_name in
                  shared_feature_list}
-env_args.update(share_feature)
+env_args.update(share_feature)             #传入这么大的参数，会不会太慢了，对于后面传递参数来说？
 env_args['is_sub_env'] = True
 envs = [main_env]
 for _ in range(input_args.n_thread - 1):

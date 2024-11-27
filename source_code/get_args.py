@@ -114,7 +114,7 @@ def parse_args(old_args=None):
     parser.add_argument("--two_stage_mode", default=False, action='store_true')
     parser.add_argument("--use_graph_feature", default=False, action='store_true')
     parser.add_argument("--rl_greedy_reward", default=False, action='store_true')
-    parser.add_argument("--decoupled_actor", default=False, action='store_true')
+    parser.add_argument("--decoupled_actor", default=True, action='store_false')
     parser.add_argument("--poi_in_obs_num", type=int, default=-1)
     
     parser.add_argument('--data_collect_range', type=int, default=300)
