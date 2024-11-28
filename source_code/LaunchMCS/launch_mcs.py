@@ -1071,6 +1071,8 @@ class EnvUCS(object):
         '''
         limited_collection: 限制采集范围,在carrier和uav中不同，是9999还是500？
         :param CHANNELS: 信道数量
+        求每个type的agent，对每个poi的吞吐量，按照吞吐量排序，返回前CHANNELS个poi的索引
+        用这个，就不用hgcn选点了。这个函数相当于，基于规则选点
         :return: sorted_access, 形如 {'uav': [[0, 0, 0], [0, 0, 0], [0, 0, 0]], 'carrier': [[0, 0, 0]]}
         '''
 
@@ -2156,7 +2158,7 @@ class EnvUCS(object):
             if agent_type == 'carrier':
                 car_pos = self.agent_position[agent_type][agent_index]
                 sinr_i, capacity_i = compute_capacity_G2G(self.noma_config,
-                                                            self._cal_distance(poi_i_pos, car_pos, type)
+                                                            self._cal_distance(poi_i_pos, car_pos, agent_type)
                                                             )
                 capacity_i /= 1e6
 
@@ -2165,7 +2167,7 @@ class EnvUCS(object):
                 relay_car_index = self.decided_relay_dict[agent_index] # 确定当前uav转发给哪个car
                 uav_pos, relay_car_pos = self.agent_position[agent_type][agent_index], self.agent_position['carrier'][relay_car_index]
                 # uav从poi_i收集数据，但poi_j会造成干扰
-                poi_j_index = self.decided_sorted_access['carrier'][relay_car_index][channel]
+                poi_j_index = self.decided_sorted_access['carrier'][relay_car_index][channel] #added by zf, poi_j会造成干扰，是因为car同时直接从poi_j收集信息，也要realy信息，所以干扰
 
                 if self._cal_distance(uav_pos, relay_car_pos, agent_type) >= self.COLLECT_RANGE[agent_type] and self.config(
                         "limited_collection"):
@@ -2332,6 +2334,9 @@ class EnvUCS(object):
 
     
     def get_type_index_channel_from_step(self,step):
+        """
+        先car收集，再uav收集
+        """
         agent_type = 'carrier' if step < self.NUM_UAV['carrier']*self.CHANNEL_NUM else 'uav'
         agent_index =  (step // (self.CHANNEL_NUM)) % self.NUM_UAV['carrier']
         channel = step % self.CHANNEL_NUM
@@ -2340,6 +2345,12 @@ class EnvUCS(object):
         return agent_type,agent_index,channel
 
     def continue_step(self):
+        """
+        cotinue_step是在下层MDP过程结束之后，用来获取上层MDP（移动决策）的观测，奖励，done，info
+        在poi_step中，完成了 uav-car的relay关系的计算， 完成了 uav和car的每个channel选择poi的决策， 分别记录在了 decided_relay_dict和decided_sorted_access中，
+        decided的意思是已经决定了，已经决策了，以及完成了，做一个记录，传递给上层MDP
+        在continue_step中，通过decided_sorted_access和，重新计算收集数据量，但不模拟收集过程，（在poi_step中模拟了收集过程），计算reward
+        """
         
         if self.RL_GREEDY_REWARD:
             relay_dict, sorted_access = self._relay_association(), self._access_determin(self.CHANNEL_NUM)

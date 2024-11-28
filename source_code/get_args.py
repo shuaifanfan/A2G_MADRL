@@ -88,7 +88,7 @@ def parse_args(old_args=None):
     ## setting
     parser.add_argument('--limited_collection', action='store_true')
     parser.add_argument('--random_map', action='store_true')
-    parser.add_argument('--fixed_relay', action='store_true', default=True)
+    parser.add_argument('--fixed_relay', action='store_false', default=True)
     parser.add_argument('--time_slot', type=float, default=20)
     parser.add_argument('--uav_poi_dis', type=float, default=-1.0)
     parser.add_argument('--reduce_poi', action='store_true', default=False)

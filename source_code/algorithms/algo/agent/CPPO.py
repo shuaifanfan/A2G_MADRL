@@ -199,40 +199,7 @@ class CPPOAgent(nn.ModuleList, AgentBase):
             # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=500, gamma=0.9)
             self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=2000, gamma=0.9)
 
-        if self.use_mate:
-            if agent_args.mate_type == 'mix':
-                from source_code.algorithms.model.mix_mate import MixedMATE as MATE
-                config_path = '/home/liuchi/fangchen/AirDropMCS/source_code/algorithms/config/ae_config/mix_mate.yaml'
-            elif agent_args.mate_type == 'ind':
-                from source_code.algorithms.model.ind_mate import IndependentMATE as MATE
-                config_path = '/home/liuchi/fangchen/AirDropMCS/source_code/algorithms/config/ae_config/ind_mate.yaml'
-            elif agent_args.mate_type == 'cen':
-                from source_code.algorithms.model.cen_mate import CentralisedMATE as MATE
-                config_path = '/home/liuchi/fangchen/AirDropMCS/source_code/algorithms/config/ae_config/cen_mate.yaml'
-            else:
-                raise NotImplementedError("Unsupported")
-
-            self.mate = {}
-            if self.share_mate:
-                mate = MATE([Box(low=-1, high=1, shape=(self.observation_dim,)) for _ in range(self.n_agent_all)],
-                            [self.action_space['uav'] for _ in range(self.n_agent_all)],
-                            gcn_models=[self.gcn_model for _ in range(self.n_agent_all)], config_path=config_path,
-                            config=agent_args, )
-            else:
-                mate = None
-            for type in self.agent_type:
-                if mate is None:
-                    self.mate[type] = MATE(
-                        [Box(low=-1, high=1, shape=(self.observation_dim,)) for _ in range(self.n_agent[type])],
-                        [self.action_space[type] for _ in range(self.n_agent[type])],
-                        gcn_models=[self.gcn_model for _ in range(self.n_agent[type])], config_path=config_path,
-                        config=agent_args)
-                else:
-                    self.mate[type] = mate
-
-            if self.restore_mate:
-                for type in self.agent_type:
-                    self.mate[type].restore(os.path.join(input_args.mate_path, type))
+    
 
 
 
