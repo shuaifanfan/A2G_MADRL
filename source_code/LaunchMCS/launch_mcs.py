@@ -841,9 +841,9 @@ class EnvUCS(object):
         info['Metric/zf/noramlied_efficiency_with_voi_loss_ratio_wo_energy'] = data_collect_norm/(aoi_var_norm*voi_loss_ratio*aoi_norm)
         voi_sencond_part_norm = sum([sum(self.uav_voi_second_part[type][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type])])/total_data_generated
         info['Metric/zf/voi_second_part_norm'] = voi_sencond_part_norm
-        data_step_reward = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
-        aoi_step_reward = sum(self.history_step_reward['aoi'])
-        energy_step_reward = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
+        data_step_reward = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))/ (self.step_count*self.n_agents)
+        aoi_step_reward = sum(self.history_step_reward['aoi'])/self.step_count
+        energy_step_reward = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))/ (self.step_count*self.n_agents)
         info['Metric/zf/data_step_reward'] = data_step_reward
         info['Metric/zf/aoi_step_reward'] = aoi_step_reward
         info['Metric/zf/energy_step_reward'] = energy_step_reward
@@ -871,9 +871,9 @@ class EnvUCS(object):
             info[f'Metric/zf/voi_lambda_{type}'] = voi_lambda_temp
             voi_second_part_norm_temp = sum([sum(self.uav_voi_second_part[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])/total_data_generated
             info[f'Metric/zf/voi_second_part_norm_{type}'] = voi_second_part_norm_temp
-            data_step_reward_temp = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
-            aoi_step_reward_temp = sum(self.history_step_reward['aoi'])
-            energy_step_reward_temp = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
+            data_step_reward_temp = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for uav_index in range(self.NUM_UAV[type]))/ (self.step_count*self.NUM_UAV[type])
+            aoi_step_reward_temp = sum(self.history_step_reward['aoi'])/self.step_count
+            energy_step_reward_temp = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for uav_index in range(self.NUM_UAV[type]))/ (self.step_count*self.NUM_UAV[type])
             info[f'Metric/zf/data_step_reward_{type}'] = data_step_reward_temp
             info[f'Metric/zf/aoi_step_reward_{type}'] = aoi_step_reward_temp
             info[f'Metric/zf/energy_step_reward_{type}'] = energy_step_reward_temp
