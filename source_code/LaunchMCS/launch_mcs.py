@@ -1047,22 +1047,22 @@ class EnvUCS(object):
         每个无人机就近选择relay的无人车
         :return: relay_dict, 形如 {0: 1, 1: 1, 2: 1, 3: 1}
         '''
-        # if self.config("fixed_relay"):
-        #     return {i:i for i in range(self.NUM_UAV['uav'])}
+        if self.config("fixed_relay"):
+            return {i:i for i in range(self.NUM_UAV['uav'])}
 
         relay_dict = {uav_index:uav_index for uav_index in range(self.NUM_UAV['uav'])}
-        #available_car = [1 for _ in range(self.NUM_UAV['carrier'])]
-        #for uav_index in range(self.NUM_UAV['uav']):
-            #relay_dict[uav_index] = uav_index
-            # dis_mat = [self._cal_distance(self.agent_position['uav'][uav_index], car_pos, 'uav') for car_pos in
-            #            self.agent_position['carrier']]
-            # for index in range(self.NUM_UAV['carrier']):
-            #     if available_car[index] == 0 and self.config("fixed_relay"):
-            #         dis_mat[index] = 999999999
+        available_car = [1 for _ in range(self.NUM_UAV['carrier'])]
+        for uav_index in range(self.NUM_UAV['uav']):
+            relay_dict[uav_index] = uav_index
+            dis_mat = [self._cal_distance(self.agent_position['uav'][uav_index], car_pos, 'uav') for car_pos in
+                       self.agent_position['carrier']]
+            for index in range(self.NUM_UAV['carrier']):
+                if available_car[index] == 0:
+                    dis_mat[index] = 999999999
 
-            # car_index = np.argmin(dis_mat)
-            # relay_dict[uav_index] = car_index
-            # available_car[car_index] = 0
+            car_index = np.argmin(dis_mat)
+            relay_dict[uav_index] = car_index
+            available_car[car_index] = 0
 
         return relay_dict
 
@@ -2130,18 +2130,18 @@ class EnvUCS(object):
         self.poi_adj_dict = self.init_poi_adj_dict
     
         
-    def poi_step(self, policy_action):
+    def poi_step(self, policy_action): #下层强化学习的小MDP过程，接受选点的action，返回obs, reward, done, info
         assert self.poi_step_status == True
         assert self.decided_collect_time is not None
         agent_type,agent_index,channel = self.get_type_index_channel_from_step(self.poi_step_count)
         
-        if policy_action == 0:
+        if policy_action == 0: #从最近的14中选择，hgcn_output+非线性变换+softmax -> 15个概率，选择概率最大的,0表示不采集
             self.decided_sorted_access[agent_type][agent_index].append(-1)
             self.rl_data_rate[agent_type][agent_index].append(0)
             reward = 0
         else:
             if self.NEAR_SELECTION_MODE:
-                action = self.action_to_poi_index[agent_type][agent_index][policy_action-1]
+                action = self.action_to_poi_index[agent_type][agent_index][policy_action-1] #policy_action-1是因为0是不采集，原来从0到13的poi的index
                 self.poi_adj_dict[agent_type]['poi'][agent_index][policy_action-1] = 0
                 self.poi_adj_dict['poi'][agent_type][policy_action-1][agent_index] = 0
 
