@@ -385,7 +385,7 @@ class EnvUCS(object):
         self.uav_voi_second_part = {key: [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.history_step_reward_1 = {key+'data/voi': [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.history_step_reward_2 = {key+'energy': [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
-        self.history_step_reward_3 = {key+'aoi': [[] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
+        self.history_step_reward_3 = {"aoi":[]}
         self.history_step_reward = {**self.history_step_reward_1, **self.history_step_reward_2, **self.history_step_reward_3}
         self.greedy_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
         self.rl_data_rate = {key: [[1e-5] for i in range(self.NUM_UAV[key])] for key in self.UAV_TYPE}
@@ -650,7 +650,6 @@ class EnvUCS(object):
         if self.COLLECT_MODE == 1 or self.COLLECT_MODE == 2:
             self.check_arrival()
             self.aoi_history.append(np.mean(np.asarray(self.poi_value) / self.USER_DATA_AMOUNT))
-        
             self.emergency_history.append(
                     np.mean([1 if aoi / self.USER_DATA_AMOUNT >= self.AOI_THRESHOLD else 0 for aoi in self.poi_value]))
             aoi_reward = self.aoi_history[-2] - self.aoi_history[-1]
@@ -677,7 +676,7 @@ class EnvUCS(object):
                             aux = 0
 
                         uav_reward[type][uav_index] += aoi_reward  + aux
-                        self.history_step_reward[type+'aoi'][uav_index].append(aoi_reward)
+                        self.history_step_reward['aoi'].append(aoi_reward)
                         #print("aoi_reward:",aoi_reward)
                         #uav_reward[type][uav_index] = aoi_reward + aux
                         if self.dis_bonus:
@@ -843,7 +842,7 @@ class EnvUCS(object):
         voi_sencond_part_norm = sum([sum(self.uav_voi_second_part[type][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type])])/total_data_generated
         info['Metric/zf/voi_second_part_norm'] = voi_sencond_part_norm
         data_step_reward = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
-        aoi_step_reward = sum(sum(self.history_step_reward[type+'aoi'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
+        aoi_step_reward = sum(self.history_step_reward['aoi'])
         energy_step_reward = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for type in self.UAV_TYPE for uav_index in range(self.NUM_UAV[type]))
         info['Metric/zf/data_step_reward'] = data_step_reward
         info['Metric/zf/aoi_step_reward'] = aoi_step_reward
@@ -873,7 +872,7 @@ class EnvUCS(object):
             voi_second_part_norm_temp = sum([sum(self.uav_voi_second_part[type][uav_index]) for uav_index in range(self.NUM_UAV[type])])/total_data_generated
             info[f'Metric/zf/voi_second_part_norm_{type}'] = voi_second_part_norm_temp
             data_step_reward_temp = sum(sum(self.history_step_reward[type+'data/voi'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
-            aoi_step_reward_temp = sum(sum(self.history_step_reward[type+'aoi'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
+            aoi_step_reward_temp = sum(self.history_step_reward['aoi'])
             energy_step_reward_temp = sum(sum(self.history_step_reward[type+'energy'][uav_index]) for uav_index in range(self.NUM_UAV[type]))
             info[f'Metric/zf/data_step_reward_{type}'] = data_step_reward_temp
             info[f'Metric/zf/aoi_step_reward_{type}'] = aoi_step_reward_temp
@@ -2487,7 +2486,7 @@ class EnvUCS(object):
                        
                         
                         uav_reward[type][uav_index] += aoi_reward  + aux
-                        self.history_step_reward[type+'aoi'][uav_index].append(aoi_reward)
+                        self.history_step_reward['aoi'].append(aoi_reward)
                         if self.dis_bonus:
                             if type == 'carrier':
                                 dis = 0
