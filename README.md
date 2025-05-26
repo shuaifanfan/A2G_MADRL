@@ -53,8 +53,8 @@ See [`get_args.py`](get_args.py) or [`sweep.yaml`](sweep.yaml) for parameter det
 
 ### 3. Environment and Algorithm Configurations
 
-- Environment configs: [`env_configs`](env_configs), [`LaunchMCS/env_setting`](LaunchMCS/env_setting)
-- Algorithm/experiment configs: [`algorithms/config`](algorithms/config)
+- Environment configs: [`env_configs`](source_code/env_configs), [`LaunchMCS/env_setting`](source_code/LaunchMCS/env_setting)
+- Algorithm/experiment configs: [`algorithms/config`](source_code/algorithms/config)
 
 ### 4. Visualization
 
