@@ -81,5 +81,7 @@ python tools/post/walk_summary.py --group_dir <your_experiment_group>
 ## Acknowledgements
 
 This project integrates various RL and multi-agent system methods, suitable for academic research and engineering experiments.
+
 ---
+
 For questions, please contact the project maintainer.
