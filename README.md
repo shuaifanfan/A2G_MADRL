@@ -49,7 +49,7 @@ For example, to run the DPPO algorithm:
 python main_DPPO.py --dataset KAIST --algo CPPO --random_permutation --n_iter 30000 --gpu 2 --device cuda:0
 ```
 
-See [`get_args.py`](get_args.py) or [`sweep.yaml`](sweep.yaml) for parameter details.
+See [`get_args.py`](source_code/get_args.py) or [`sweep.yaml`](source_code/sweep.yaml) for parameter details.
 
 ### 3. Environment and Algorithm Configurations
 
@@ -72,10 +72,10 @@ python tools/post/walk_summary.py --group_dir <your_experiment_group>
 
 ## Main Modules
 
-- [`algorithms`](algorithms): Multiple RL algorithms (IPPO, IA2C, DPPO, etc.) and models.
-- [`env_configs`](env_configs): Environment configs and wrappers for different maps/tasks.
-- [`LaunchMCS`](LaunchMCS): Main MCS environment, data processing, etc.
-- [`tools`](tools): Data pre/post-processing and visualization.
+- [`algorithms`](source_code/algorithms): Multiple RL algorithms (IPPO, IA2C, DPPO, etc.) and models.
+- [`env_configs`](source_code/env_configs): Environment configs and wrappers for different maps/tasks.
+- [`LaunchMCS`](source_code/LaunchMCS): Main MCS environment, data processing, etc.
+- [`tools`](source_code/tools): Data pre/post-processing and visualization.
 
 
 ## Acknowledgements
